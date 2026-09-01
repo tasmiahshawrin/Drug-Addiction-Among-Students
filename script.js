@@ -255,13 +255,7 @@ function renderInsights(records) {
       </div>
     </div>
 
-    <div class="insight-card">
-      <div class="insight-card-tag">Risk Compounding Gap</div>
-      <div class="insight-card-val highlight">${highVulnRate.toFixed(1)}% vs ${lowVulnRate.toFixed(1)}%</div>
-      <div class="insight-card-desc">
-        Students with 5+ symptoms face a <strong>+${rateGap.toFixed(1)}% risk gap</strong> (${vulnMultiplier}× likelihood) compared to peers with ≤2 symptoms.
-      </div>
-    </div>
+    
   `;
 }
 
