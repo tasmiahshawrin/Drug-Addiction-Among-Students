@@ -37,6 +37,7 @@ const AppState = {
   theme: 'light',
   records: [],
   d1Factors: new Set(ALL_FACTORS),
+  d1Style: 'enhanced', // 'enhanced' | 'classic'
   d2Factors: new Set(['Experimentation', 'Academic_Performance_Decline', 'Social_Isolation', 'Financial_Issues', 'Physical_Mental_Health_Problems']),
   d2SelectedPair: { f1: 'Relationship_Strain', f2: 'Social_Isolation' }
 };
@@ -121,10 +122,17 @@ const Tooltip = {
     if (!this.el) this.init();
     if (!this.el) return;
     this.titleEl.textContent = title;
-    this.rowsEl.innerHTML = rows.map(r =>
+    this.rowsEl.innerHTML = `<div class="tooltip-table">${rows.map(r =>
       `<div class="tooltip-row"><span class="lbl">${r.label}</span><span class="val ${r.isRed ? 'red' : ''}">${r.val}</span></div>`
-    ).join('');
-    this.hintEl.textContent = hint || 'Click for deeper breakdown.';
+    ).join('')}</div>`;
+    if (this.hintEl) {
+      if (hint && hint.trim().length > 0) {
+        this.hintEl.style.display = 'block';
+        this.hintEl.textContent = hint;
+      } else {
+        this.hintEl.style.display = 'none';
+      }
+    }
     this.el.classList.add('visible');
     this.move(event);
   },
@@ -300,23 +308,32 @@ function initDiagram1() {
   if (!container) return;
   container.innerHTML = '';
 
-  const margin = { top: 35, right: 40, bottom: 55, left: 50 };
+  const margin = { top: 35, right: 40, bottom: 55, left: 55 };
   const svg = d3.select(container).append('svg');
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
   const x = d3.scaleLinear().domain([0, 100]);
   const zonesG = g.append('g').attr('class', 'beeswarm-zones');
   const guidesG = g.append('g').attr('class', 'beeswarm-guides');
+  const lanesG = g.append('g').attr('class', 'beeswarm-lanes');
   const xAxisG = g.append('g').attr('class', 'axis x-axis');
   const labelsG = g.append('g').attr('class', 'beeswarm-cluster-labels');
   const dotsG = g.append('g').attr('class', 'beeswarm-dots');
   const meanG = g.append('g').attr('class', 'beeswarm-mean-group');
 
+  function calculateMedian(arr) {
+    if (!arr.length) return 0;
+    const sorted = arr.slice().sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
   function update() {
     const factors = Array.from(AppState.d1Factors);
     const containerW = Math.max(container.clientWidth || 0, 750);
     const width = containerW - margin.left - margin.right;
-    const height = 280;
+    const isEnhanced = AppState.d1Style === 'enhanced';
+    const height = isEnhanced ? 340 : 280;
 
     svg.attr('viewBox', `0 0 ${containerW} ${height + margin.top + margin.bottom}`)
       .attr('style', 'max-width: 100%; height: auto;');
@@ -390,11 +407,19 @@ function initDiagram1() {
     const scoreCounts = {};
     tickValues.forEach(v => { scoreCounts[v.toFixed(1)] = 0; });
 
+    const addictedScores = [];
+    const nonAddictedScores = [];
     let totalScoreSum = 0;
     let sampleStudentCount = 0;
 
     const bucketWidth = (width / numDistinctScores);
-    const maxJitterSpread = isFewFactors ? bucketWidth * 0.32 : bucketWidth * 0.15;
+    const maxJitterSpread = isFewFactors ? bucketWidth * 0.18 : (isEnhanced ? 0 : bucketWidth * 0.15);
+
+    const yAddictedCenter = isEnhanced ? height * 0.28 : height * 0.5;
+    const yNonAddictedCenter = isEnhanced ? height * 0.72 : height * 0.5;
+
+    const crimsonColor = isDark ? '#FF4D6D' : '#C9184A';
+    const steelBlueColor = isDark ? '#4EA8DE' : '#457B9D';
 
     for (let i = 0; i < AppState.records.length; i += sampleRate) {
       const r = AppState.records[i];
@@ -407,52 +432,94 @@ function initDiagram1() {
       totalScoreSum += score;
       sampleStudentCount++;
 
+      const isAddicted = r.Addiction_Class === 'Yes';
+      if (isAddicted) addictedScores.push(score);
+      else nonAddictedScores.push(score);
+
       const jitterOffset = (Math.random() - 0.5) * maxJitterSpread;
+      const targetX = x(score) + jitterOffset;
+      const targetY = isAddicted ? yAddictedCenter : yNonAddictedCenter;
 
       points.push({
         id: i,
         score,
-        targetX: x(score) + jitterOffset,
+        targetX,
+        targetY,
         yesCnt,
-        isAddicted: r.Addiction_Class === 'Yes',
-        color: r.Addiction_Class === 'Yes'
-          ? (isDark ? '#FF4D6D' : '#C9184A')
-          : (isDark ? '#FFF0F3' : '#1F1619')
+        isAddicted,
+        color: isAddicted ? crimsonColor : steelBlueColor
       });
     }
 
-    const meanScore = sampleStudentCount > 0 ? (totalScoreSum / sampleStudentCount) : 50;
+    const overallMean = sampleStudentCount > 0 ? (totalScoreSum / sampleStudentCount) : 50;
+    const addictedMedian = calculateMedian(addictedScores);
+    const nonAddictedMedian = calculateMedian(nonAddictedScores);
+    const addictedMean = addictedScores.length ? (d3.sum(addictedScores) / addictedScores.length) : 0;
+    const nonAddictedMean = nonAddictedScores.length ? (d3.sum(nonAddictedScores) / nonAddictedScores.length) : 0;
 
-    // Cluster sample count labels
-    if (isFewFactors) {
-      const clusterLabelData = tickValues.map(tv => {
-        const key = tv.toFixed(1);
-        const countSampled = scoreCounts[key] || 0;
-        const estimatedPopulation = Math.round(countSampled * sampleRate);
-        return { score: tv, count: estimatedPopulation };
-      });
+    // Lanes Rendering (Enhanced Split View Labels & Divider)
+    lanesG.selectAll('*').remove();
+    if (isEnhanced) {
+      // Lane divider line
+      lanesG.append('line')
+        .attr('class', 'beeswarm-lane-divider')
+        .attr('x1', 0).attr('x2', width)
+        .attr('y1', height * 0.5).attr('y2', height * 0.5);
 
-      const clusterLabels = labelsG.selectAll('.beeswarm-cluster-label').data(clusterLabelData);
-      clusterLabels.exit().remove();
-      clusterLabels.enter().append('text')
-        .attr('class', 'beeswarm-cluster-label')
-        .merge(clusterLabels)
-        .transition().duration(400)
-        .attr('x', d => x(d.score))
-        .attr('y', height - 8)
-        .text(d => d.count > 0 ? `n=${d.count.toLocaleString()}` : '');
-    } else {
-      labelsG.selectAll('.beeswarm-cluster-label').remove();
+      const labelX = -26;
+      const topLaneY = (20 + height * 0.5) / 2;
+      const bottomLaneY = (height * 0.5 + height) / 2;
+
+      // Addicted Lane Label (Rotated -90deg anticlockwise, centered to top split)
+      lanesG.append('text')
+        .attr('class', 'beeswarm-lane-label')
+        .attr('x', labelX)
+        .attr('y', topLaneY)
+        .attr('text-anchor', 'middle')
+        .attr('transform', `rotate(-90, ${labelX}, ${topLaneY})`)
+        .attr('fill', crimsonColor)
+        .text('Addicted');
+
+      // Non-Addicted Lane Label (Rotated -90deg anticlockwise, centered to bottom split)
+      lanesG.append('text')
+        .attr('class', 'beeswarm-lane-label')
+        .attr('x', labelX)
+        .attr('y', bottomLaneY)
+        .attr('text-anchor', 'middle')
+        .attr('transform', `rotate(-90, ${labelX}, ${bottomLaneY})`)
+        .attr('fill', steelBlueColor)
+        .text('Non-Addicted');
     }
+
+    // Remove any cluster count labels
+    labelsG.selectAll('*').remove();
 
     const dotRadius = isFewFactors ? 4.2 : 4.6;
+    // D3 Force Simulation
+    const xStrength = isFewFactors ? 0.8 : (isEnhanced ? 2.0 : 1.4);
+    const yStrength = isFewFactors ? 0.4 : 0.25;
+
     const simulation = d3.forceSimulation(points)
-      .force('x', d3.forceX(d => d.targetX).strength(1.4))
-      .force('y', d3.forceY(height / 2).strength(0.18))
-      .force('collide', d3.forceCollide(dotRadius + 1.1).iterations(3))
+      .force('x', d3.forceX(d => d.targetX).strength(xStrength))
+      .force('y', d3.forceY(d => d.targetY).strength(yStrength))
+      .force('collide', d3.forceCollide(dotRadius + 1.1).iterations(4))
       .stop();
 
-    for (let i = 0; i < 110; ++i) simulation.tick();
+    // Strict vertical lane bounding during simulation ticks
+    for (let i = 0; i < 150; ++i) {
+      simulation.tick();
+      if (isEnhanced) {
+        points.forEach(d => {
+          if (d.isAddicted) {
+            if (d.y > height * 0.46 - dotRadius) d.y = height * 0.46 - dotRadius;
+            if (d.y < 22 + dotRadius) d.y = 22 + dotRadius;
+          } else {
+            if (d.y < height * 0.54 + dotRadius) d.y = height * 0.54 + dotRadius;
+            if (d.y > height - 18 - dotRadius) d.y = height - 18 - dotRadius;
+          }
+        });
+      }
+    }
 
     const dots = dotsG.selectAll('.beeswarm-dot').data(points, d => d.id);
     dots.exit().transition().duration(250).attr('r', 0).remove();
@@ -463,7 +530,7 @@ function initDiagram1() {
       .attr('cx', d => d.x)
       .attr('cy', d => d.y)
       .attr('fill', d => d.color)
-      .attr('stroke', isDark ? '#22161C' : '#FFFFFF')
+      .attr('stroke', isDark ? '#1F1619' : '#FFFFFF')
       .attr('stroke-width', 1.1)
       .attr('fill-opacity', 0.92);
 
@@ -473,36 +540,76 @@ function initDiagram1() {
       .attr('cx', d => d.x)
       .attr('cy', d => d.y)
       .attr('fill', d => d.color)
-      .attr('stroke', isDark ? '#22161C' : '#FFFFFF');
+      .attr('stroke', isDark ? '#1F1619' : '#FFFFFF')
+      .attr('stroke-width', 1.1)
+      .attr('fill-opacity', 0.92);
 
+    // Remove median/mean lines overlay
     meanG.selectAll('*').remove();
-    const meanX = x(meanScore);
-    meanG.append('line')
-      .attr('class', 'beeswarm-mean-line')
-      .attr('x1', meanX).attr('x2', meanX)
-      .attr('y1', 25).attr('y2', height);
 
-    meanG.append('text')
-      .attr('class', 'beeswarm-mean-badge')
-      .attr('x', meanX + 5)
-      .attr('y', 36)
-      .text(`Mean: ${meanScore.toFixed(1)}%`);
+    // Minimal Metric Strip Update
+    const bannerEl = document.getElementById('d1-analytics-banner');
+    if (bannerEl) {
+      if (isEnhanced) {
+        bannerEl.innerHTML = `
+          <div class="analytics-metric-pills">
+            <span class="metric-pill neutral">${factors.length} Factors Active</span>
+            <span class="metric-pill addicted">Addicted Avg: ${addictedMean.toFixed(1)}%</span>
+            <span class="metric-pill non-addicted">Non-Addicted Avg: ${nonAddictedMean.toFixed(1)}%</span>
+          </div>
+        `;
+      } else {
+        bannerEl.innerHTML = `
+          <div class="analytics-metric-pills">
+            <span class="metric-pill neutral">${factors.length} Factors Active</span>
+          </div>
+        `;
+      }
+    }
+
+    // Minimal Legend Hint
+    const legendHintEl = document.getElementById('d1-legend-hint');
+    if (legendHintEl) {
+      legendHintEl.textContent = isEnhanced
+        ? '1 Dot ≈ 98 Students • Hover dot for profile breakdown'
+        : '1 Dot ≈ 98 Students • Hover dot for profile breakdown';
+    }
 
     dotsG.selectAll('.beeswarm-dot')
       .on('mouseover', function (event, d) {
         Tooltip.show(
           event,
-          `Student Vulnerability: ${d.score.toFixed(1)}%`,
+          `Student Vulnerability Index: ${d.score.toFixed(1)}%`,
           [
-            { label: 'Positive Factors', val: `${d.yesCnt} of ${factors.length} Active ('Yes')` },
-            { label: 'Addiction Status', val: d.isAddicted ? 'Confirmed Addicted (Yes)' : 'Non-Addicted (No)', isRed: d.isAddicted },
-            { label: 'Cohort Weight', val: `~${sampleRate} students represented` }
+            { label: 'Active Factors', val: `${d.yesCnt} of ${factors.length} (${d.score.toFixed(0)}%)` },
+            { label: 'Addiction Status', val: d.isAddicted ? 'Addicted' : 'Non-Addicted', isRed: d.isAddicted },
+            { label: 'Sample Weight', val: `~${sampleRate} Students` }
           ],
-          'Individual student particles clustered with organic density spread.'
+
         );
       })
       .on('mousemove', e => Tooltip.move(e))
       .on('mouseout', () => Tooltip.hide());
+  }
+
+  // Visualization Style Switcher Event Handlers
+  const modeEnhanced = document.getElementById('d1-mode-enhanced');
+  const modeClassic = document.getElementById('d1-mode-classic');
+
+  if (modeEnhanced && modeClassic) {
+    modeEnhanced.onclick = () => {
+      AppState.d1Style = 'enhanced';
+      modeEnhanced.classList.add('active');
+      modeClassic.classList.remove('active');
+      update();
+    };
+
+    modeClassic.onclick = () => {
+      AppState.d1Style = 'classic';
+      modeClassic.classList.add('active');
+      modeEnhanced.classList.remove('active');
+      update();
+    };
   }
 
   // Quick Action Buttons for Diagram 1

@@ -107,9 +107,18 @@
          ========================================================================= -->
     <section class="diagram-section" id="section-diagram-1">
       <div class="diagram-header-area">
-
         <h2 class="diagram-title">Beeswarm Dot Density Plot</h2>
-
+        <div class="view-mode-toggle-group" id="d1-mode-switcher">
+          <span class="toggle-label">Visualization Style:</span>
+          <button class="btn-toggle active" id="d1-mode-enhanced"
+            title="Enhanced: Parallel cohort lanes with strict discrete column alignment and cohort medians">
+            Split View
+          </button>
+          <button class="btn-toggle" id="d1-mode-classic"
+            title="Classic: Original single swarm with organic horizontal jitter spread and combined mean">
+            Merged View
+          </button>
+        </div>
       </div>
 
       <!-- DEDICATED FACTORS PANEL FOR DIAGRAM 1 -->
@@ -132,15 +141,20 @@
 
       <!-- DIAGRAM 1 STAGE -->
       <div class="diagram-body">
+        <!-- DYNAMIC ANALYTICS BANNER FOR DIAGRAM 1 -->
+        <div id="d1-analytics-banner" class="analytics-banner">
+          <!-- Injected via JavaScript -->
+        </div>
+
         <div id="d1-beeswarm-container" class="viz-stage"></div>
         <div class="legend-row">
-          <span class="legend-item"><span class="legend-swatch circle" style="background: var(--color-no);"></span>
-            Confirmed Addiction (Red)</span>
-          <span class="legend-item"><span class="legend-swatch circle"
-              style="background: var(--color-yes); border: 1px solid var(--border-strong);"></span> Non-Addicted
-            (Black)</span>
-          <span style="margin-left: auto; font-size: 0.78rem; color: var(--text-muted);">Each particle represents ~100
-            sampled students • Hover dot for profile breakdown</span>
+          <span class="legend-item"><span class="legend-swatch circle" style="background: #C9184A;"></span>
+            Confirmed Addiction (Crimson)</span>
+          <span class="legend-item"><span class="legend-swatch circle" style="background: #457B9D;"></span> Non-Addicted
+            (Steel Blue)</span>
+          <span id="d1-legend-hint" style="margin-left: auto; font-size: 0.78rem; color: var(--text-muted);">
+            1 Dot ≈ 98 Students • Hover dot for profile breakdown
+          </span>
         </div>
       </div>
     </section>
@@ -236,7 +250,6 @@
   <div id="narrative-tooltip">
     <div class="tooltip-title" id="tt-title">Title</div>
     <div id="tt-rows"></div>
-    <div class="tooltip-hint" id="tt-hint">Click for deeper breakdown.</div>
   </div>
 
   <!-- EMBEDDED DATASET SCRIPT (100% Offline / Standalone Hosting) -->

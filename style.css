@@ -879,6 +879,33 @@ body {
   fill: var(--accent-red);
 }
 
+/* Beeswarm Lane & Median Styling */
+.beeswarm-lane-divider {
+  stroke: var(--border-strong);
+  stroke-width: 1.5px;
+  stroke-dasharray: 6, 4;
+  opacity: 0.6;
+}
+
+.beeswarm-lane-label {
+  font-family: var(--font-main);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.beeswarm-median-line {
+  stroke-width: 2px;
+  stroke-dasharray: 4, 3;
+}
+
+.beeswarm-median-badge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
 .beeswarm-cluster-label {
   font-family: var(--font-mono);
   font-size: 9.5px;
@@ -896,6 +923,92 @@ body {
   stroke: var(--text-primary);
   stroke-width: 2.5px;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
+}
+
+/* View Mode Toggle Controls */
+.view-mode-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--bg-card);
+  padding: 3px 6px;
+  border-radius: 20px;
+  border: 1px solid var(--border-subtle);
+}
+
+.toggle-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+
+.btn-toggle {
+  background: transparent;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-toggle:hover {
+  color: var(--text-primary);
+}
+
+.btn-toggle.active {
+  background: var(--accent-red);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(201, 24, 74, 0.25);
+}
+
+/* Analytics Banner - Minimal Metric Strip */
+.analytics-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  padding: 0 0 0.1rem 0;
+  margin: 0 0 -0.25rem 0;
+}
+
+.analytics-metric-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.metric-pill {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 16px;
+  letter-spacing: 0.01em;
+}
+
+.metric-pill.neutral {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.metric-pill.addicted {
+  background: rgba(201, 24, 74, 0.1);
+  color: #C9184A;
+  border: 1px solid rgba(201, 24, 74, 0.22);
+}
+
+.metric-pill.non-addicted {
+  background: rgba(69, 123, 157, 0.1);
+  color: #457B9D;
+  border: 1px solid rgba(69, 123, 157, 0.22);
 }
 
 /* Legend Row */
@@ -927,7 +1040,7 @@ body {
 }
 
 /* -------------------------------------------------------------
-   TOOLTIP
+   TOOLTIP - Structured Table Layout
    ------------------------------------------------------------- */
 #narrative-tooltip {
   position: fixed;
@@ -938,10 +1051,11 @@ body {
   color: var(--text-primary);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  padding: 0.75rem 0.95rem;
+  padding: 0.8rem 1rem;
   font-size: 0.82rem;
-  box-shadow: var(--shadow-md);
-  max-width: 320px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+  min-width: 290px;
+  max-width: 360px;
   line-height: 1.45;
   transform: translate(-50%, -110%);
   transition: opacity 0.15s ease, transform 0.15s ease;
@@ -954,25 +1068,43 @@ body {
 .tooltip-title {
   font-weight: 700;
   font-size: 0.88rem;
-  margin-bottom: 0.35rem;
-  padding-bottom: 0.3rem;
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.tooltip-table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.25rem 0 0.4rem 0;
 }
 
 .tooltip-row {
-  display: flex;
-  justify-content: space-between;
-  margin: 0.2rem 0;
-  gap: 1rem;
+  display: table-row;
 }
 
 .tooltip-row .lbl {
+  display: table-cell;
+  padding: 4px 16px 4px 0;
   color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .tooltip-row .val {
+  display: table-cell;
+  padding: 4px 0;
+  text-anchor: end;
+  text-align: right;
   font-weight: 600;
   font-family: var(--font-mono);
+  font-size: 0.8rem;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .tooltip-row .val.red {
@@ -980,11 +1112,12 @@ body {
 }
 
 .tooltip-hint {
-  margin-top: 0.4rem;
-  padding-top: 0.3rem;
+  margin-top: 0.45rem;
+  padding-top: 0.35rem;
   border-top: 1px dashed var(--border-subtle);
   font-size: 0.74rem;
   color: var(--text-secondary);
+  line-height: 1.35;
 }
 
 /* Footer */
